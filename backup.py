@@ -119,7 +119,6 @@ def main():
 
 
 def backup_all_assignments(the_course):
-    global canvas
     all_assns = [s for s in the_course.get_assignments()]
     results = {}
     # for i in range(5):
