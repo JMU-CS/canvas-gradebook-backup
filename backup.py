@@ -50,14 +50,7 @@ def main():
         "--all", action="store_true", help="backup the scores for all assignments"
     )
 
-    # parser.add_argument(
-    #     "--wet_run",
-    #     action="store_true",
-    #     help="really assign the scores")
-
     args = parser.parse_args()
-
-    # DRY = not args.wet_run
 
     canvas_key = args.canvas_key
     canvas_url = args.canvas_url
@@ -83,7 +76,6 @@ def main():
 
     global canvas
     canvas = Canvas(canvas_url, canvas_key)
-    # try:
     the_course = canvas.get_course(args.course)
     course_students = [s for s in the_course.get_recent_students()]
     global course_student_id_to_sis_id
