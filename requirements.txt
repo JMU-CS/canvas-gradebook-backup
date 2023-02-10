@@ -1,1 +1,1 @@
-canvasapi ~= 2.2.0
+canvasapi ~= 3.0.0
