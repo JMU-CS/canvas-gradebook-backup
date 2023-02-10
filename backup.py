@@ -25,58 +25,10 @@ CANVAS_REQUIRED_FIELDS = [
 ]
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--canvas_key",
-        default=None,
-        help="your canvas account token. see: \
-            https://canvas.instructure.com/doc/api/file.oauth.html#manual-token-generation",
-    )
-
-    parser.add_argument(
-        "--canvas_url",
-        default=None,
-        help="the URL of your canvas instance, e.g. https://canvas.jmu.edu/",
-    )
-
-    parser.add_argument("course", help="canvas course id")
-
-    parser.add_argument("-o", "--outfile", help="file to write the backup to")
-
-    parser.add_argument("--assignment", help="canvas assignment id", required=False)
-
-    parser.add_argument(
-        "--all", action="store_true", help="backup the scores for all assignments"
-    )
-
-    args = parser.parse_args()
-
-    canvas_key = args.canvas_key
-    canvas_url = args.canvas_url
-    if canvas_key is None:
-        canvas_key = os.environ["CANVAS_KEY"]
-    if canvas_url is None:
-        canvas_url = os.environ["CANVAS_URL"]
-    if canvas_key is None or canvas_url is None:
-        print(
-            "must provide canvas api key and url via either the optional \
-            flags or the environment variables: CANVAS_KEY and CANVAS_URL"
-        )
-        sys.exit(1)
-
-    if args.assignment is None and not args.all:
-        print("must provide either an assignment id or the --all flag")
-        sys.exit(1)
-
-    # ambiguous intent
-    if args.all and args.assignment is not None:
-        print("cannot provide both an assignment id and the --all flag")
-        sys.exit(1)
-
+def main(canvas_url, canvas_key, course, assignment=None, outfile=None):
     global canvas
     canvas = Canvas(canvas_url, canvas_key)
-    the_course = canvas.get_course(args.course)
+    the_course = canvas.get_course(course)
     course_students = [s for s in the_course.get_recent_students()]
     global course_student_id_to_sis_id
     course_student_id_to_sis_id = {s.id: s.sis_user_id for s in course_students}
@@ -97,16 +49,16 @@ def main():
                     CANVAS_REQUIRED_FIELDS[i]: student_info[i]
                     for i in range(len(CANVAS_REQUIRED_FIELDS))
                 }
-    if args.assignment is not None:
-        the_assignment = the_course.get_assignment(args.assignment)
+    if assignment is not None:
+        the_assignment = the_course.get_assignment(assignment)
         data = backup_single_assignment(the_course, the_assignment)
-        backup_path = filename(the_course, the_assignment, outfile=args.outfile)
+        backup_path = filename(the_course, the_assignment, outfile=outfile)
         write_backup(backup_path, data)
     else:
         # must be that args.all is True
         data = backup_all_assignments(the_course)
         merged = merge(data)
-        backup_path = filename(the_course, all=True, outfile=args.outfile)
+        backup_path = filename(the_course, all=True, outfile=outfile)
         write_backup(backup_path, merged)
 
 
@@ -147,10 +99,11 @@ def backup_single_assignment(the_course, the_assignment):
             f"{the_assignment.name} ({the_assignment.id})": score
         }
         subs.append(student_values)
-    return subs
+    return sorted(subs, key=lambda x: x["Student"])
 
 
 def write_backup(filename, data):
+    # FIXME: this next line breaks the single assignment backup
     fields = [v for v in data.values()][0].keys()
 
     with open(filename, "w") as csvfile:
@@ -160,6 +113,7 @@ def write_backup(filename, data):
 
 
 def filename(course, assignment=None, all=None, outfile=None):
+    # TODO: consider checking if this is a directory in which case naming the file according to the logic in this function
     if outfile is not None:
         return outfile
     timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
@@ -170,4 +124,52 @@ def filename(course, assignment=None, all=None, outfile=None):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--canvas_key",
+        default=None,
+        help="your canvas account token. see: \
+            https://canvas.instructure.com/doc/api/file.oauth.html#manual-token-generation",
+    )
+
+    parser.add_argument(
+        "--canvas_url",
+        default=None,
+        help="the URL of your canvas instance, e.g. https://canvas.jmu.edu/",
+    )
+
+    parser.add_argument("course", help="canvas course id")
+
+    # TODO: consider making it possible to write to stdout to support scripty pipey funtimes
+    parser.add_argument("-o", "--outfile", help="file to write the backup to")
+
+    parser.add_argument("--assignment", help="canvas assignment id", required=False)
+
+    parser.add_argument(
+        "--all", action="store_true", help="backup the scores for all assignments"
+    )
+
+    args = parser.parse_args()
+
+    canvas_key = args.canvas_key
+    canvas_url = args.canvas_url
+    if canvas_key is None:
+        canvas_key = os.environ["CANVAS_KEY"]
+    if canvas_url is None:
+        canvas_url = os.environ["CANVAS_URL"]
+    if canvas_key is None or canvas_url is None:
+        print(
+            "must provide canvas api key and url via either the optional \
+            flags or the environment variables: CANVAS_KEY and CANVAS_URL"
+        )
+        sys.exit(1)
+
+    if args.assignment is None and not args.all:
+        print("must provide either an assignment id or the --all flag")
+        sys.exit(1)
+
+    # ambiguous intent
+    if args.all and args.assignment is not None:
+        print("cannot provide both an assignment id and the --all flag")
+        sys.exit(1)
     main()
