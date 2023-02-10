@@ -172,4 +172,4 @@ if __name__ == "__main__":
     if args.all and args.assignment is not None:
         print("cannot provide both an assignment id and the --all flag")
         sys.exit(1)
-    main()
+    main(canvas_url, canvas_key, args.course, args.assignment, args.outfile)
