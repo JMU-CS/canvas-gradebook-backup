@@ -87,18 +87,26 @@ def backup_single_assignment(the_course, the_assignment):
 
     subs = []
     for s in all:
-        sis_id = course_student_id_to_sis_id[s.user_id]
-        if sis_id not in canvas_student_data:
-            print(f"{sis_id} not in {canvas_student_data.keys()}")
-            sys.exit(1)
+        if s.user_id not in course_student_id_to_sis_id:
+            missing_student = the_course.get_user(s.user_id)
+            if missing_student.short_name != 'Test Student':
+                print(f"{s.user_id} not in {course_student_id_to_sis_id.keys()}")
+                print(f"for submission {s.id}")
+                print(f"for assignment {the_assignment.id}")
+                sys.exit(1)
+        else:
+            sis_id = course_student_id_to_sis_id[s.user_id]
+            if sis_id not in canvas_student_data:
+                print(f"{sis_id} not in {canvas_student_data.keys()}")
+                sys.exit(1)
 
-        score = ""
-        if not s.missing:
-            score = s.score
-        student_values = canvas_student_data[sis_id] | {
-            f"{the_assignment.name} ({the_assignment.id})": score
-        }
-        subs.append(student_values)
+            score = ""
+            if not s.missing:
+                score = s.score
+            student_values = canvas_student_data[sis_id] | {
+                f"{the_assignment.name} ({the_assignment.id})": score
+            }
+            subs.append(student_values)
     return sorted(subs, key=lambda x: x["Student"])
 
 
