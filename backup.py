@@ -1,3 +1,5 @@
+#!/home/stewarmc/canvasapi-venv/bin/python
+
 import argparse
 from canvasapi import Canvas
 import os
