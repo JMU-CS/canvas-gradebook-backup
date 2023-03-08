@@ -2,10 +2,13 @@
 
 import argparse
 from canvasapi import Canvas
+from canvasapi.exceptions import InvalidAccessToken
 import os
 import sys
 from datetime import datetime
 import csv
+from collections import defaultdict
+from itertools import zip_longest
 
 """
 Given a Canvas course id (and optionally a single assignment id), create a csv file that stores the current scores for all students for all assignments (that have the matching assignment id if it was provided). 
@@ -28,10 +31,18 @@ CANVAS_REQUIRED_FIELDS = [
 
 
 def main(canvas_url, canvas_key, course, assignment=None, outfile=None):
-    print(canvas_url, canvas_key)
     global canvas
     canvas = Canvas(canvas_url, canvas_key)
-    the_course = canvas.get_course(course)
+    the_course = None
+    try:
+        the_course = canvas.get_course(course)
+    except InvalidAccessToken as iat:
+        print(
+            "Got InvalidAccessToken: ",
+            iat,
+        )
+        propose_course_id_correction(canvas, course)
+        sys.exit(1)
     course_students = [s for s in the_course.get_recent_students()]
     global course_student_id_to_sis_id
     course_student_id_to_sis_id = {s.id: s.sis_user_id for s in course_students}
@@ -138,6 +149,32 @@ def filename(course, assignment=None, all=None, outfile=None):
             directory,
             f"{ts}-{course.id}-{assignment.name.replace(' ', '_')}.bk.csv",
         )
+
+
+def hamming_distance(s1, s2):
+    return sum(c1 != c2 for c1, c2 in zip_longest(s1, s2))
+
+
+def propose_course_id_correction(canvas, incorrect_id):
+    all_courses = [c for c in canvas.get_courses()]
+    substrings = []
+    hamms = defaultdict(list)
+    for c in all_courses:
+        if incorrect_id in str(c.id):
+            substrings.append(c)
+        d = hamming_distance(incorrect_id, str(c.id))
+        if d < 6:
+            hamms[d].append(c)
+    print(
+        "Either you have supplied an incorrect canvas_key, or perhaps an incorrect course."
+    )
+    for c in substrings:
+        msg = f"When you gave the course id as {incorrect_id} did you perhaps mean {c.id} as in {c.id} - {c.name} start(ing/ed) {c.start_at} (its course id is a superstring of your entry)"
+        print(f"{msg}?")
+    for d in sorted(hamms.keys()):
+        for c in hamms[d]:
+            msg = f"When you gave the course id as {incorrect_id} did you perhaps mean {c.id} as in {c.id} - {c.name} start(ing/ed) {c.start_at}"
+            print(f"{msg} (a hamming distance of {d} from your entry)?")
 
 
 if __name__ == "__main__":
