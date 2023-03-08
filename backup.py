@@ -89,7 +89,7 @@ def backup_single_assignment(the_course, the_assignment):
     for s in all:
         if s.user_id not in course_student_id_to_sis_id:
             missing_student = the_course.get_user(s.user_id)
-            if missing_student.short_name != 'Test Student':
+            if missing_student.short_name != "Test Student":
                 print(f"{s.user_id} not in {course_student_id_to_sis_id.keys()}")
                 print(f"for submission {s.id}")
                 print(f"for assignment {the_assignment.id}")
@@ -122,13 +122,19 @@ def write_backup(filename, data):
 
 def filename(course, assignment=None, all=None, outfile=None):
     # TODO: consider checking if this is a directory in which case naming the file according to the logic in this function
-    if outfile is not None:
+    if outfile is not None and not os.path.isdir(outfile):
         return outfile
-    timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    directory = ""
+    if os.path.isdir(outfile):
+        directory = outfile
+    ts = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     if all is not None:
-        return f"{timestamp}-{course.id}-ALL.bk.csv"
+        return os.path.join(directory, f"{ts}-{course.id}-ALL.bk.csv")
     else:
-        return f"{timestamp}-{course.id}-{assignment.name.replace(' ', '_')}.bk.csv"
+        return os.path.join(
+            directory,
+            f"{ts}-{course.id}-{assignment.name.replace(' ', '_')}.bk.csv",
+        )
 
 
 if __name__ == "__main__":
