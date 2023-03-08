@@ -28,6 +28,7 @@ CANVAS_REQUIRED_FIELDS = [
 
 
 def main(canvas_url, canvas_key, course, assignment=None, outfile=None):
+    print(canvas_url, canvas_key)
     global canvas
     canvas = Canvas(canvas_url, canvas_key)
     the_course = canvas.get_course(course)
